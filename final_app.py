@@ -49,22 +49,31 @@ if uploaded_file is not None:
     st.image('Contour_Leads_1-12_figure.png')
   
   """#### **CONVERTING TO 1D SIGNAL**"""
-  #call the combine and conver to 1D signal method
+  #call the combine and convert to 1D signal method
   ecg_1dsignal = ecg.CombineConvert1Dsignal()
   my_expander4 = st.expander(label='1D Signals')
   with my_expander4:
     st.write(ecg_1dsignal)
     
-  """#### **PERFORM DIMENSINALITY REDUCTION**"""
-  #call the dimensinality reduction funciton
-  ecg_final = ecg.DimensionalReduciton(ecg_1dsignal)
-  my_expander4 = st.expander(label='Dimensional Reduction')
-  with my_expander4:
-    st.write(ecg_final)
+  """#### **ANALYZE P, Q, R, S, T WAVES**"""
+  # Add this new section to analyze P, Q, R, S, T waves
+  pqrst_analysis = ecg.analyze_pqrs_waves(ecg_1dsignal)
+  my_expander_pqrst = st.expander(label='P, Q, R, S, T Wave Analysis')
+  with my_expander_pqrst:
+    st.write(pqrst_analysis)
+    st.image('pqrst_wave_diagram.png')
   
-  """#### **PASS TO PRETRAINED ML MODEL FOR PREDICTION**"""
-  #call the Pretrainsed ML model for prediction
-  ecg_model=ecg.ModelLoad_predict(ecg_final)
-  my_expander5 = st.expander(label='PREDICTION')
+  """#### **PERFORM DIMENSIONALITY REDUCTION**"""
+  # Call the dimensionality reduction function
+  ecg_final, pqrst_features = ecg.DimensionalReduction(ecg_1dsignal, pqrst_analysis)
+  my_expander5 = st.expander(label='Dimensional Reduction')
   with my_expander5:
+    st.write(ecg_final)
+    st.write("P, Q, R, S, T Features:", pqrst_features)
+
+  """#### **PASS TO PRETRAINED ML MODEL FOR PREDICTION**"""
+  # Call the Pretrained ML model for prediction
+  ecg_model = ecg.ModelLoad_predict(ecg_final)
+  my_expander6 = st.expander(label='PREDICTION')
+  with my_expander6:
     st.write(ecg_model)

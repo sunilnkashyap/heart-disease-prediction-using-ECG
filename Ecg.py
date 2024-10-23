@@ -17,6 +17,8 @@ from natsort import natsorted
 from sklearn import linear_model, tree, ensemble
 from sklearn.naive_bayes import GaussianNB
 from sklearn.linear_model import LogisticRegression
+import scipy.signal as signal
+from scipy.signal import find_peaks
 
 class ECG:
 	def  getImage(self,image):
@@ -228,18 +230,116 @@ class ECG:
 		final_df = pd.DataFrame(result)
 		return final_df
 
-	def ModelLoad_predict(self,final_df):
+	def ModelLoad_predict(self, final_df):
 		"""
-		This Function Loads the pretrained model and perfrom ECG classification
+		This Function Loads the pretrained model and perform ECG classification
 		return the classification Type.
 		"""
 		loaded_model = joblib.load('best.pkl')
+
+		# Ensure final_df is 2D
+		if final_df.ndim == 1:
+			final_df = final_df.reshape(1, -1)
+
 		result = loaded_model.predict(final_df)
 		if result[0] == 1:
-			return "You ECG corresponds to Myocardial Infarction"
+			return "Your ECG corresponds to Myocardial Infarction"
 		elif result[0] == 0:
-			return "You ECG corresponds to Abnormal Heartbeat"
+			return "Your ECG corresponds to Abnormal Heartbeat"
 		elif result[0] == 2:
 			return "Your ECG is Normal"
 		else:
-			return "You ECG corresponds to History of Myocardial Infarction"
+			return "Your ECG corresponds to History of Myocardial Infarction"
+
+	def analyze_pqrs_waves(self, ecg_1dsignal):
+		"""
+		This function analyzes the P, Q, R, S, T waves of the ECG signal.
+		:param ecg_1dsignal: 1D ECG signal
+		:return: Dictionary containing P, Q, R, S, T wave features and plot
+		"""
+		# Convert DataFrame to numpy array
+		ecg_signal = ecg_1dsignal.values.flatten()
+
+		# Find R peaks
+		r_peaks, _ = find_peaks(ecg_signal, height=0.5, distance=100)
+
+		pqrst_features = {
+			'r_peaks': [],
+			'p_waves': [],
+			'q_waves': [],
+			's_waves': [],
+			't_waves': []
+		}
+
+		for peak in r_peaks:
+			# R peak
+			pqrst_features['r_peaks'].append((peak, ecg_signal[peak]))
+
+			# P wave (look for maximum in 200ms before R peak)
+			p_search_start = max(0, peak - 50)
+			p_wave = np.argmax(ecg_signal[p_search_start:peak]) + p_search_start
+			pqrst_features['p_waves'].append((p_wave, ecg_signal[p_wave]))
+
+			# Q wave (look for minimum between P wave and R peak)
+			q_wave = np.argmin(ecg_signal[p_wave:peak]) + p_wave
+			pqrst_features['q_waves'].append((q_wave, ecg_signal[q_wave]))
+
+			# S wave (look for minimum in 100ms after R peak)
+			s_search_end = min(len(ecg_signal), peak + 25)
+			s_wave = np.argmin(ecg_signal[peak:s_search_end]) + peak
+			pqrst_features['s_waves'].append((s_wave, ecg_signal[s_wave]))
+
+			# T wave (look for maximum in 300ms after R peak)
+			t_search_end = min(len(ecg_signal), peak + 75)
+			t_wave = np.argmax(ecg_signal[s_wave:t_search_end]) + s_wave
+			pqrst_features['t_waves'].append((t_wave, ecg_signal[t_wave]))
+
+		# Create PQRST wave diagram
+		plt.figure(figsize=(12, 6))
+		plt.plot(ecg_signal)
+		
+		# Plot PQRST points
+		for wave_type, color, marker in zip(['p_waves', 'q_waves', 'r_peaks', 's_waves', 't_waves'], 
+											['green', 'orange', 'red', 'purple', 'blue'],
+											['o', 's', '^', 'D', 'v']):
+			x, y = zip(*pqrst_features[wave_type])
+			plt.scatter(x, y, c=color, marker=marker, s=100, label=wave_type.capitalize())
+
+		plt.title("ECG Signal with PQRST Waves")
+		plt.xlabel("Sample")
+		plt.ylabel("Amplitude")
+		plt.legend()
+		plt.grid(True)
+		plt.savefig('pqrst_wave_diagram.png')
+		plt.close()
+
+		return pqrst_features
+
+	def DimensionalReduction(self, ecg_1dsignal, pqrst_analysis):
+		"""
+		This function reduces the dimensionality of the 1D signal using PCA
+		and includes PQRST features
+		returns the final dataframe and PQRST features
+		"""
+		# First load the trained pca
+		pca_loaded_model = joblib.load('pca-final.pkl')
+		result = pca_loaded_model.transform(ecg_1dsignal)
+		final_df = pd.DataFrame(result)
+
+		# Ensure final_df is 2D
+		if final_df.ndim == 1:
+			final_df = final_df.to_frame().T
+
+		# Add PQRST features
+		pqrst_features = {
+			'mean_r_peak': np.mean(pqrst_analysis['r_peaks']),
+			'mean_p_wave': np.mean(pqrst_analysis['p_waves']),
+			'mean_q_wave': np.mean(pqrst_analysis['q_waves']),
+			'mean_s_wave': np.mean(pqrst_analysis['s_waves']),
+			'mean_t_wave': np.mean(pqrst_analysis['t_waves']),
+		}
+
+		return final_df, pqrst_features
+
+
+
