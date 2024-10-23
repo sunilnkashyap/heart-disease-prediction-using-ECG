@@ -28,8 +28,8 @@ if uploaded_file is not None:
   #streamlit expander for dividing leads
   my_expander1 = st.expander(label='DIVIDING LEAD')
   with my_expander1:
-    st.image('processedImages/Leads_1-12_figure.png')
-    st.image('processedImages/Long_Lead_13_figure.png')
+    st.image('Leads_1-12_figure.png')
+    st.image('Long_Lead_13_figure.png')
   
   """#### **PREPROCESSED LEADS**"""
   #call the preprocessed leads method
@@ -38,15 +38,15 @@ if uploaded_file is not None:
   #streamlit expander for preprocessed leads
   my_expander2 = st.expander(label='PREPROCESSED LEAD')
   with my_expander2:
-    st.image('processedImages/Preprossed_Leads_1-12_figure.png')
-    st.image('processedImages/Preprossed_Leads_13_figure.png')
+    st.image('Preprossed_Leads_1-12_figure.png')
+    st.image('Preprossed_Leads_13_figure.png')
   
   """#### **EXTRACTING SIGNALS(1-12)**"""
   #call the sognal extraction method
   ec_signal_extraction = ecg.SignalExtraction_Scaling(dividing_leads)
   my_expander3 = st.expander(label='CONOTUR LEADS')
   with my_expander3:
-    st.image('processedImages/Contour_Leads_1-12_figure.png')
+    st.image('Contour_Leads_1-12_figure.png')
   
   """#### **CONVERTING TO 1D SIGNAL**"""
   #call the combine and conver to 1D signal method
